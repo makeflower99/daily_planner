@@ -8,6 +8,15 @@ const rateLimit = require('express-rate-limit');
 const { db, findUser, findUserById, getUserData, saveUserData } = require('./db');
 const { startBackupSchedule } = require('./backup');
 
+const CONFIG = {
+  SESSION_MAX_AGE: 7 * 24 * 60 * 60 * 1000,   // 7일
+  SESSION_CLEANUP_INTERVAL: 900_000,            // 15분
+  BODY_SIZE_LIMIT: '1mb',
+  DATA_SIZE_LIMIT: 1024 * 1024,                 // 1MB
+  GLOBAL_RATE: { windowMs: 60_000, max: 100 },
+  LOGIN_RATE: { windowMs: 15 * 60_000, max: 10 },
+};
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_DIR = process.env.DB_DIR || '/data';
@@ -36,12 +45,12 @@ app.use(helmet({
 app.use(morgan('short'));
 
 // === 바디 파서 ===
-app.use(express.json({ limit: '1mb' }));
-app.use(express.text({ type: 'text/plain', limit: '1mb' })); // sendBeacon 대응
+app.use(express.json({ limit: CONFIG.BODY_SIZE_LIMIT }));
+app.use(express.text({ type: 'text/plain', limit: CONFIG.BODY_SIZE_LIMIT })); // sendBeacon 대응
 
 // === 세션 ===
 app.use(session({
-  store: new SqliteStore({ client: sessionDb, expired: { clear: true, intervalMs: 900000 } }),
+  store: new SqliteStore({ client: sessionDb, expired: { clear: true, intervalMs: CONFIG.SESSION_CLEANUP_INTERVAL } }),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -49,7 +58,7 @@ app.use(session({
     httpOnly: true,
     sameSite: 'lax',
     secure: false, // Tunnel 뒤에서도 false가 맞음 (Tunnel→Express는 HTTP)
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    maxAge: CONFIG.SESSION_MAX_AGE,
   },
 }));
 
@@ -60,24 +69,11 @@ function requireAuth(req, res, next) {
   return res.redirect('/login.html');
 }
 
-// === 전체 Rate Limiter (1분 내 100회) ===
-const globalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' },
-});
+// === Rate Limiters ===
+const rateLimitBase = { standardHeaders: true, legacyHeaders: false };
+const globalLimiter = rateLimit({ ...rateLimitBase, ...CONFIG.GLOBAL_RATE, message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' } });
+const loginLimiter = rateLimit({ ...rateLimitBase, ...CONFIG.LOGIN_RATE, message: { error: '너무 많은 로그인 시도입니다. 15분 후 다시 시도하세요.' } });
 app.use(globalLimiter);
-
-// === 로그인 Rate Limiter (15분 내 10회) ===
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: '너무 많은 로그인 시도입니다. 15분 후 다시 시도하세요.' },
-});
 
 // ========== 인증 불필요 라우트 ==========
 
@@ -161,7 +157,7 @@ function handleDataSave(req, res) {
 
   // 크기 제한 검증 (1MB)
   const json = JSON.stringify(body);
-  if (json.length > 1024 * 1024) {
+  if (json.length > CONFIG.DATA_SIZE_LIMIT) {
     return res.status(413).json({ error: '데이터가 너무 큽니다' });
   }
 
