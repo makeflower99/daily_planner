@@ -21,34 +21,24 @@ function changeTrackerDate(dir) {
   renderTracker();
 }
 
-function renderTracker() {
-  const parts = trackerDate.split('-').map(Number);
-  const days = ['일','월','화','수','목','금','토'];
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  document.getElementById('tracker-date-label').textContent =
-    `${parts[0]}년 ${monthNames[parts[1]-1]} ${parts[2]}일 (${days[d.getDay()]})`;
-
-  const container = document.getElementById('tracker-content');
-  const checkSvg = `<svg width="8" height="8" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
-  // 체크리스트: 해당 날짜의 섹션들
-  const sections = getSectionsForDate(trackerDate);
+// ===== 통계 데이터 수집 =====
+function buildTrackerStats(dateKey) {
+  const sections = getSectionsForDate(dateKey);
   let checkTotal = 0, checkDone = 0;
   const checklistRows = [];
 
   sections.forEach(sec => {
-    getItemsForDate(sec, trackerDate).forEach(item => {
+    getItemsForDate(sec, dateKey).forEach(item => {
       checkTotal++;
-      const isDone = isCompleted(trackerDate, item.id);
+      const isDone = isCompleted(dateKey, item.id);
       if (isDone) checkDone++;
       checklistRows.push({ section: sec.title, color: sec.color, secId: sec.id, item, isDone });
     });
   });
 
   // 과거 날짜: dailyRecords 스냅샷도 확인
-  if (sections.length === 0 && trackerDate !== todayKey()) {
-    const record = getDailyRecord(trackerDate);
+  if (sections.length === 0 && dateKey !== todayKey()) {
+    const record = getDailyRecord(dateKey);
     if (record && record.checklist) {
       Object.keys(record.checklist).forEach(id => {
         const r = record.checklist[id];
@@ -66,8 +56,8 @@ function renderTracker() {
   }
 
   // 식단 데이터
-  const mealPlan = getMealPlan(trackerDate);
-  const mealActual = getMealActual(trackerDate);
+  const mealPlan = getMealPlan(dateKey);
+  const mealActual = getMealActual(dateKey);
   let mealTotal = 0, mealDone = 0;
   MEAL_TYPES.forEach(mt => {
     const planned = mealPlan[mt.key] || [];
@@ -82,7 +72,10 @@ function renderTracker() {
   const checkPct = checkTotal > 0 ? Math.round(checkDone / checkTotal * 100) : 0;
   const mealPct = mealTotal > 0 ? Math.round(mealDone / mealTotal * 100) : 0;
 
-  let html = `
+  let hasMealData = false;
+  MEAL_TYPES.forEach(mt => { if ((mealPlan[mt.key] || []).length > 0) hasMealData = true; });
+
+  const html = `
     <div class="stats-row">
       <div class="stat-card"><div class="stat-val" style="color:var(--accent)">${allPct}%</div><div class="stat-label">전체 달성률</div></div>
       <div class="stat-card"><div class="stat-val" style="color:var(--accent2)">${checkPct}%</div><div class="stat-label">루틴 달성률</div></div>
@@ -90,82 +83,108 @@ function renderTracker() {
     </div>
   `;
 
-  // 체크리스트 비교 테이블
-  if (checklistRows.length > 0) {
-    html += `<div class="tracker-section-title">✅ 체크리스트</div>`;
-    html += `<table class="tracker-table"><thead><tr>
-      <th>카테고리</th><th>항목</th><th>계획</th><th>실행</th><th>상태</th>
-    </tr></thead><tbody>`;
+  return { html, checklistRows, mealPlan, mealActual, hasMealData };
+}
 
-    checklistRows.forEach(row => {
-      const canToggle = !row.archived ? `onclick="trackerToggleCheck('${trackerDate}','${row.item.id}')"` : '';
-      const checkedStyle = row.isDone ? `background:${row.color};border-color:${row.color}` : '';
-      html += `<tr>
-        <td style="font-size:12px"><span class="section-color-dot" style="background:${row.color};margin-right:6px"></span><span style="color:${row.color}">${row.section}</span></td>
-        <td>${row.item.emoji} ${row.item.label}</td>
-        <td style="text-align:center;color:${row.color}">✓</td>
-        <td style="text-align:center">
-          <button class="tracker-check ${row.isDone ? 'checked' : ''}" style="${checkedStyle}" ${canToggle}>${checkSvg}</button>
-        </td>
-        <td style="text-align:center" class="${row.isDone ? 'status-done' : 'status-miss'}">${row.isDone ? '✅' : '❌'}</td>
-      </tr>`;
-    });
-    html += `</tbody></table>`;
-  }
+// ===== 체크리스트 비교 테이블 =====
+function buildChecklistTable(checklistRows, dateKey) {
+  if (checklistRows.length === 0) return '';
 
-  // 식단 비교 테이블
+  let html = `<div class="tracker-section-title">✅ 체크리스트</div>`;
+  html += `<table class="tracker-table"><thead><tr>
+    <th>카테고리</th><th>항목</th><th>계획</th><th>실행</th><th>상태</th>
+  </tr></thead><tbody>`;
+
+  checklistRows.forEach(row => {
+    const canToggle = !row.archived ? `onclick="trackerToggleCheck('${dateKey}','${row.item.id}')"` : '';
+    const checkedStyle = row.isDone ? `background:${row.color};border-color:${row.color}` : '';
+    html += `<tr>
+      <td style="font-size:12px"><span class="section-color-dot" style="background:${row.color};margin-right:6px"></span><span style="color:${row.color}">${row.section}</span></td>
+      <td>${row.item.emoji} ${row.item.label}</td>
+      <td style="text-align:center;color:${row.color}">✓</td>
+      <td style="text-align:center">
+        <button class="tracker-check ${row.isDone ? 'checked' : ''}" style="${checkedStyle}" ${canToggle}>${CHECK_SVG_SM}</button>
+      </td>
+      <td style="text-align:center" class="${row.isDone ? 'status-done' : 'status-miss'}">${row.isDone ? '✅' : '❌'}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  return html;
+}
+
+// ===== 식단 비교 테이블 =====
+function buildMealTable(mealPlan, mealActual, dateKey) {
   let hasMealData = false;
   MEAL_TYPES.forEach(mt => { if ((mealPlan[mt.key] || []).length > 0) hasMealData = true; });
+  if (!hasMealData) return '';
 
-  if (hasMealData) {
-    html += `<div class="tracker-section-title meal-title">🍽️ 식단</div>`;
-    html += `<table class="tracker-table tracker-meal"><thead><tr>
-      <th>끼니</th><th>계획한 식단</th><th>실행</th><th>상태</th>
-    </tr></thead><tbody>`;
+  let html = `<div class="tracker-section-title meal-title">🍽️ 식단</div>`;
+  html += `<table class="tracker-table tracker-meal"><thead><tr>
+    <th>끼니</th><th>계획한 식단</th><th>실행</th><th>상태</th>
+  </tr></thead><tbody>`;
 
-    MEAL_TYPES.forEach(mt => {
-      const planned = mealPlan[mt.key] || [];
-      const actual = mealActual[mt.key] || [];
-      planned.forEach(food => {
-        const isDone = actual.includes(food);
-        html += `<tr>
-          <td style="color:var(--accent3);font-size:12px;font-weight:500">${mt.emoji} ${mt.label}</td>
-          <td>${food}</td>
-          <td style="text-align:center">
-            <button class="tracker-check ${isDone ? 'checked' : ''}" onclick="trackerToggleMeal('${trackerDate}','${mt.key}','${food.replace(/'/g, "\\'")}')">${checkSvg}</button>
-          </td>
-          <td style="text-align:center" class="${isDone ? 'status-done' : 'status-miss'}">${isDone ? '✅' : '❌'}</td>
-        </tr>`;
-      });
+  MEAL_TYPES.forEach(mt => {
+    const planned = mealPlan[mt.key] || [];
+    const actual = mealActual[mt.key] || [];
+    planned.forEach(food => {
+      const isDone = actual.includes(food);
+      html += `<tr>
+        <td style="color:var(--accent3);font-size:12px;font-weight:500">${mt.emoji} ${mt.label}</td>
+        <td>${food}</td>
+        <td style="text-align:center">
+          <button class="tracker-check ${isDone ? 'checked' : ''}" onclick="trackerToggleMeal('${dateKey}','${mt.key}','${food.replace(/'/g, "\\'")}')">${CHECK_SVG_SM}</button>
+        </td>
+        <td style="text-align:center" class="${isDone ? 'status-done' : 'status-miss'}">${isDone ? '✅' : '❌'}</td>
+      </tr>`;
     });
-    html += `</tbody></table>`;
-  }
+  });
+  html += `</tbody></table>`;
+  return html;
+}
 
-  if (checklistRows.length === 0 && !hasMealData) {
+// ===== 할 일 섹션 =====
+function buildTrackerTodos(dateKey) {
+  const todos = getTodos(dateKey);
+  if (todos.length === 0) return '';
+
+  const todoDone = todos.filter(t => t.done).length;
+  const todoPct = Math.round(todoDone / todos.length * 100);
+
+  let html = `<div class="tracker-section-title">📝 할 일 <span style="font-size:12px;font-weight:400;color:var(--text3)">${todoDone}/${todos.length} (${todoPct}%)</span></div>`;
+  html += `<table class="tracker-table"><thead><tr><th>할 일</th><th style="width:60px;text-align:center">상태</th></tr></thead><tbody>`;
+  todos.forEach(todo => {
+    const checkedStyle = todo.done ? 'background:var(--accent2);border-color:var(--accent2)' : '';
+    html += `<tr>
+      <td>${escapeHtml(todo.text)}</td>
+      <td style="text-align:center">
+        <button class="tracker-check ${todo.done ? 'checked' : ''}" style="${checkedStyle}" onclick="trackerToggleTodo('${dateKey}','${todo.id}')">${CHECK_SVG}</button>
+      </td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  return html;
+}
+
+// ===== 메인 렌더러 =====
+function renderTracker() {
+  const d = parseDate(trackerDate);
+  const parts = trackerDate.split('-').map(Number);
+  document.getElementById('tracker-date-label').textContent =
+    `${parts[0]}년 ${MONTH_NAMES[parts[1]-1]} ${parts[2]}일 (${DAY_NAMES[d.getDay()]})`;
+
+  const container = document.getElementById('tracker-content');
+  const stats = buildTrackerStats(trackerDate);
+  let html = stats.html;
+
+  html += buildChecklistTable(stats.checklistRows, trackerDate);
+  html += buildMealTable(stats.mealPlan, stats.mealActual, trackerDate);
+
+  if (stats.checklistRows.length === 0 && !stats.hasMealData) {
     html += `<div class="empty-hint">이 날짜에 기록된 데이터가 없습니다.</div>`;
   }
 
-  // 할 일
-  const todos = getTodos(trackerDate);
-  if (todos.length > 0) {
-    const todoDone = todos.filter(t => t.done).length;
-    const todoPct = Math.round(todoDone / todos.length * 100);
-    const checkSvgSm = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    html += `<div class="tracker-section-title">📝 할 일 <span style="font-size:12px;font-weight:400;color:var(--text3)">${todoDone}/${todos.length} (${todoPct}%)</span></div>`;
-    html += `<table class="tracker-table"><thead><tr><th>할 일</th><th style="width:60px;text-align:center">상태</th></tr></thead><tbody>`;
-    todos.forEach(todo => {
-      const checkedStyle = todo.done ? 'background:var(--accent2);border-color:var(--accent2)' : '';
-      html += `<tr>
-        <td>${escapeHtml(todo.text)}</td>
-        <td style="text-align:center">
-          <button class="tracker-check ${todo.done ? 'checked' : ''}" style="${checkedStyle}" onclick="trackerToggleTodo('${trackerDate}','${todo.id}')">${checkSvgSm}</button>
-        </td>
-      </tr>`;
-    });
-    html += `</tbody></table>`;
-  }
+  html += buildTrackerTodos(trackerDate);
 
-  // 습관 변화 추적
   const evolutions = computeSectionEvolution(trackerDate);
   html += renderEvolutionHTML(evolutions);
 

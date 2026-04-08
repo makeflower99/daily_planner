@@ -54,6 +54,16 @@ const REPEAT_TYPES = [
   { key: 'monthly', label: '매월' },
 ];
 
+const DAY_NAMES = ['일','월','화','수','목','금','토'];
+const MONTH_NAMES = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+const CHECK_SVG = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHECK_SVG_SM = `<svg width="8" height="8" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function parseDate(dateKey) {
+  const p = dateKey.split('-').map(Number);
+  return new Date(p[0], p[1] - 1, p[2]);
+}
+
 let data = {};
 let _currentUsername = ''; // localStorage 키 분리용
 

@@ -31,12 +31,10 @@ function changeMiniCalMonth(dir) {
 }
 
 function renderMiniCal() {
-  const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  document.getElementById('mini-cal-month').textContent = `${miniCalYear}년 ${monthNames[miniCalMonth]}`;
+  document.getElementById('mini-cal-month').textContent = `${miniCalYear}년 ${MONTH_NAMES[miniCalMonth]}`;
   const grid = document.getElementById('mini-cal-grid');
   grid.innerHTML = '';
-  const dayNames = ['일','월','화','수','목','금','토'];
-  dayNames.forEach(d => {
+  DAY_NAMES.forEach(d => {
     const el = document.createElement('div');
     el.className = 'mini-cal-day-name';
     el.textContent = d;
@@ -89,26 +87,20 @@ function changeChecklistDate(dir) {
 }
 
 function updateChecklistDateLabel() {
+  const d = parseDate(checklistDate);
   const parts = checklistDate.split('-').map(Number);
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  const days = ['일','월','화','수','목','금','토'];
   document.getElementById('today-date').textContent =
-    `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+    `${parts[0]}년 ${parts[1]}월 ${parts[2]}일 (${DAY_NAMES[d.getDay()]})`;
 
   const isToday = checklistDate === todayKey();
   document.getElementById('checklist-title').textContent = isToday ? '오늘의 루틴' : '루틴';
 }
 
-function renderChecklist() {
-  const container = document.getElementById('sections-container');
-  container.innerHTML = '';
-  const dateKey = checklistDate || todayKey();
+// ===== 체크리스트 섹션 렌더링 =====
+function renderChecklistSections(container, dateKey) {
   const sections = getSectionsForDate(dateKey);
-  const checkSvg = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
   let total = 0, done = 0;
 
-  // 체크리스트 섹션 렌더링
   sections.forEach(section => {
     const visibleItems = getItemsForDate(section, dateKey);
     visibleItems.forEach(item => {
@@ -139,7 +131,7 @@ function renderChecklist() {
       el.className = 'item' + (isDone ? ' done' : '');
       el.innerHTML = `
         <button class="check ${isDone ? 'checked' : ''}" style="${isDone ? 'background:'+section.color+';border-color:'+section.color : ''}" onclick="toggleItem('${item.id}')">
-          ${checkSvg}
+          ${CHECK_SVG}
         </button>
         <span class="item-emoji">${item.emoji}</span>
         <span class="item-label" onclick="toggleItem('${item.id}')">${item.label}</span>
@@ -152,10 +144,16 @@ function renderChecklist() {
     container.innerHTML = `<div class="empty-hint">이 날짜에 해당하는 체크리스트가 없습니다.<br>캘린더 탭에서 섹션을 추가하세요.</div>`;
   }
 
-  // 식단 계획 — 하나의 그룹 카드로 묶기 (체크만 가능, 입력/삭제 없음)
+  return { total, done };
+}
+
+// ===== 체크리스트 식단 렌더링 =====
+function renderChecklistMeals(container, dateKey) {
   const mealPlan = getMealPlan(dateKey);
+  let total = 0, done = 0;
   let mealItemsHtml = '';
   let hasMealItems = false;
+
   MEAL_TYPES.forEach(mt => {
     const foods = mealPlan[mt.key];
     if (foods.length === 0) return;
@@ -166,7 +164,7 @@ function renderChecklist() {
       mealItemsHtml += `
         <div class="item ${checked ? 'done' : ''}">
           <button class="check ${checked ? 'checked' : ''}" style="${checked ? 'background:var(--accent3);border-color:var(--accent3)' : ''}" onclick="toggleMealItem('${mt.key}',${idx})">
-            ${checkSvg}
+            ${CHECK_SVG}
           </button>
           <span class="item-label" onclick="toggleMealItem('${mt.key}',${idx})">${food}</span>
         </div>`;
@@ -190,18 +188,29 @@ function renderChecklist() {
   `;
   container.appendChild(mealSec);
 
-  // 통계 갱신
+  return { total, done };
+}
+
+// ===== 체크리스트 메인 렌더러 =====
+function renderChecklist() {
+  const container = document.getElementById('sections-container');
+  container.innerHTML = '';
+  const dateKey = checklistDate || todayKey();
+
+  const secStats = renderChecklistSections(container, dateKey);
+  const mealStats = renderChecklistMeals(container, dateKey);
+
+  const total = secStats.total + mealStats.total;
+  const done = secStats.done + mealStats.done;
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
+
   document.getElementById('prog-fill').style.width = pct + '%';
   document.getElementById('prog-text').textContent = `${done} / ${total}`;
   document.getElementById('stat-done').textContent = done;
   document.getElementById('stat-remain').textContent = total - done;
   document.getElementById('stat-pct').textContent = pct + '%';
 
-  // 메모 렌더링
   renderChecklistMemo(dateKey);
-
-  // 할 일 렌더링
   renderTodos(dateKey);
 }
 
@@ -252,7 +261,6 @@ function renderTodos(dateKey) {
   const list = document.getElementById('checklist-todo-list');
   if (!list) return;
   const todos = getTodos(dateKey);
-  const checkSvg = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   if (todos.length === 0) {
     list.innerHTML = '';
@@ -267,7 +275,7 @@ function renderTodos(dateKey) {
       <button class="check ${todo.done ? 'checked' : ''}"
         style="${todo.done ? 'background:var(--accent2);border-color:var(--accent2)' : ''}"
         onclick="toggleChecklistTodo('${todo.id}')">
-        ${checkSvg}
+        ${CHECK_SVG}
       </button>
       <span class="item-label ${todo.done ? 'todo-done-text' : ''}" onclick="toggleChecklistTodo('${todo.id}')">${escapeHtml(todo.text)}</span>
       <button class="todo-del-btn" onclick="removeChecklistTodo('${todo.id}')">✕</button>
