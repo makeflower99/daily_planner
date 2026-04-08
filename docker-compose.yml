@@ -1,0 +1,24 @@
+services:
+  planner:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - planner-data:/data
+      - ./backups:/backups
+    env_file:
+      - .env
+    environment:
+      - DB_DIR=/data
+      - BACKUP_DIR=/backups
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --protocol http2 --url http://planner:3000
+    depends_on:
+      - planner
+    restart: unless-stopped
+
+volumes:
+  planner-data:

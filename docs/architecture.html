@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Planner - 아키텍처</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans KR', 'Segoe UI', sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 32px;
+  }
+
+  /* ── 파이프라인 다이어그램 ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .pipe-node {
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 10px;
+    padding: 14px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 110px;
+    position: relative;
+    user-select: none;
+  }
+  .pipe-node:hover {
+    border-color: #e94560;
+    background: #1a1a40;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(233,69,96,0.2);
+  }
+  .pipe-node.active {
+    border-color: #e94560;
+    background: #1a1a40;
+    box-shadow: 0 0 12px rgba(233,69,96,0.3);
+  }
+  .pipe-node .icon { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+  .pipe-node .label { font-size: 0.8rem; font-weight: 600; color: #ccc; }
+  .pipe-node .hint { font-size: 0.65rem; color: #777; margin-top: 2px; }
+
+  .pipe-arrow {
+    color: #0f3460;
+    font-size: 1.4rem;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── 두 번째 행 (프론트엔드) ── */
+  .pipeline-row2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .pipe-connector {
+    text-align: center;
+    color: #0f3460;
+    font-size: 1.2rem;
+    margin: 4px 0;
+  }
+
+  /* ── 상세 패널 ── */
+  .detail-panel {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.3s ease;
+    background: #16213e;
+    border-radius: 10px;
+    margin: 0 auto 12px;
+    max-width: 900px;
+    border: 1px solid transparent;
+  }
+  .detail-panel.open {
+    max-height: 2000px;
+    padding: 24px;
+    border-color: #0f3460;
+    margin-bottom: 16px;
+  }
+  .detail-panel h2 {
+    font-size: 1.1rem;
+    color: #e94560;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .detail-panel h3 {
+    font-size: 0.9rem;
+    color: #aaa;
+    margin: 14px 0 6px;
+    border-bottom: 1px solid #253255;
+    padding-bottom: 4px;
+  }
+  .detail-panel p, .detail-panel li {
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: #ccc;
+  }
+  .detail-panel ul { padding-left: 18px; }
+  .detail-panel li { margin-bottom: 3px; }
+
+  .flow-diagram {
+    background: #111;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: #7ec8e3;
+    overflow-x: auto;
+    margin: 8px 0 12px;
+    white-space: pre;
+    line-height: 1.6;
+  }
+
+  .tech-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .tech-tag {
+    background: #253255;
+    color: #7ec8e3;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .file-ref {
+    color: #e94560;
+    font-family: monospace;
+    font-size: 0.78rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 0.78rem;
+  }
+  th, td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid #253255;
+  }
+  th {
+    color: #7ec8e3;
+    font-weight: 600;
+    background: #111;
+  }
+  td { color: #ccc; }
+
+  .schema-box {
+    background: #111;
+    border-radius: 8px;
+    padding: 14px;
+    margin: 8px 0;
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: #7ec8e3;
+    line-height: 1.7;
+  }
+  .schema-box .tbl { color: #e94560; font-weight: bold; }
+  .schema-box .col { color: #ccc; }
+  .schema-box .key { color: #f0c040; }
+
+  /* ── 섹션 헤더 ── */
+  .section-header {
+    max-width: 900px;
+    margin: 32px auto 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #253255;
+    font-size: 1.1rem;
+    color: #e94560;
+    font-weight: 700;
+  }
+
+  /* ── 모듈 의존성 다이어그램 ── */
+  .dep-graph {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin: 12px 0 16px;
+  }
+  .dep-layer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .dep-box {
+    background: #253255;
+    border: 2px solid #0f3460;
+    border-radius: 8px;
+    padding: 8px 16px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #7ec8e3;
+    min-width: 120px;
+  }
+  .dep-box.base {
+    border-color: #e94560;
+    color: #e94560;
+    background: #1a1a40;
+    min-width: 200px;
+  }
+  .dep-arrow-down {
+    color: #0f3460;
+    font-size: 1.2rem;
+    margin: 4px 0;
+  }
+
+  /* ── 문서 맵 카드 ── */
+  .doc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .doc-card {
+    background: #111;
+    border: 1px solid #253255;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .doc-card .doc-name {
+    color: #e94560;
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .doc-card .doc-desc {
+    color: #999;
+    font-size: 0.72rem;
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 768px) {
+    .pipeline, .pipeline-row2 { gap: 0; }
+    .pipe-node { min-width: 80px; padding: 10px 8px; }
+    .pipe-node .icon { font-size: 1.2rem; }
+    .pipe-node .label { font-size: 0.7rem; }
+    .pipe-arrow { font-size: 1rem; }
+    .detail-panel.open { padding: 16px; }
+    .doc-grid { grid-template-columns: 1fr; }
+  }
+
+  @media print {
+    body { background: #fff; color: #222; }
+    .pipe-node { border-color: #999; background: #f5f5f5; }
+    .pipe-node .label, .pipe-node .hint { color: #333; }
+    .detail-panel { background: #f9f9f9; border-color: #ccc; }
+    .detail-panel.open { max-height: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Daily Planner - 시스템 아키텍처</h1>
+<p class="subtitle">각 박스를 클릭하면 상세 설명이 펼쳐집니다</p>
+
+<!-- ── 상단: 서버 파이프라인 ── -->
+<div class="pipeline" id="pipeline-top">
+  <div class="pipe-node" data-target="detail-user" onclick="toggleDetail(this)">
+    <span class="icon">👤</span>
+    <span class="label">사용자</span>
+    <span class="hint">브라우저 접속</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-network" onclick="toggleDetail(this)">
+    <span class="icon">🌐</span>
+    <span class="label">네트워크</span>
+    <span class="hint">Cloudflare / 로컬</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-middleware" onclick="toggleDetail(this)">
+    <span class="icon">🛡️</span>
+    <span class="label">미들웨어</span>
+    <span class="hint">보안 / 세션</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-auth" onclick="toggleDetail(this)">
+    <span class="icon">🔐</span>
+    <span class="label">인증</span>
+    <span class="hint">로그인 / 세션</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-api" onclick="toggleDetail(this)">
+    <span class="icon">📡</span>
+    <span class="label">API 라우트</span>
+    <span class="hint">REST 엔드포인트</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-db" onclick="toggleDetail(this)">
+    <span class="icon">🗄️</span>
+    <span class="label">SQLite DB</span>
+    <span class="hint">데이터 저장</span>
+  </div>
+</div>
+
+<div class="pipe-connector">↕ 데이터 동기화 ↕</div>
+
+<!-- ── 하단: 프론트엔드 파이프라인 ── -->
+<div class="pipeline-row2">
+  <div class="pipe-node" data-target="detail-datasync" onclick="toggleDetail(this)">
+    <span class="icon">🔄</span>
+    <span class="label">데이터 동기화</span>
+    <span class="hint">fetch / sendBeacon</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-datajs" onclick="toggleDetail(this)">
+    <span class="icon">💾</span>
+    <span class="label">data.js</span>
+    <span class="hint">전역 상태 관리</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-modules" onclick="toggleDetail(this)">
+    <span class="icon">📦</span>
+    <span class="label">JS 모듈</span>
+    <span class="hint">체크/캘린더/기록</span>
+  </div>
+  <span class="pipe-arrow">→</span>
+  <div class="pipe-node" data-target="detail-ui" onclick="toggleDetail(this)">
+    <span class="icon">🖥️</span>
+    <span class="label">브라우저 UI</span>
+    <span class="hint">HTML / CSS</span>
+  </div>
+  <span class="pipe-arrow" style="margin-left:16px">⟲</span>
+  <div class="pipe-node" data-target="detail-backup" onclick="toggleDetail(this)">
+    <span class="icon">💿</span>
+    <span class="label">백업</span>
+    <span class="hint">6시간 자동</span>
+  </div>
+</div>
+
+<!-- ══════ 상세 패널들 ══════ -->
+
+<!-- 사용자 -->
+<div class="detail-panel" id="detail-user">
+  <h2>👤 사용자 접속 경로</h2>
+  <p>사용자가 브라우저로 서비스에 접속하는 두 가지 경로입니다.</p>
+  <div class="flow-diagram">외부 접속:  사용자 → Cloudflare(DDoS 방어) → Tunnel(HTTPS) → Docker → Express:3000
+로컬 접속:  사용자 → http://localhost:3000 → Express → SQLite</div>
+  <h3>설명</h3>
+  <ul>
+    <li><b>외부 접속</b>: Cloudflare Tunnel이 공개 HTTPS URL을 생성하여 로컬 서버를 외부에 노출</li>
+    <li><b>로컬 접속</b>: 같은 PC/네트워크에서 localhost:3000으로 직접 접속</li>
+    <li>두 경로 모두 동일한 Express 서버로 도달</li>
+  </ul>
+</div>
+
+<!-- 네트워크 -->
+<div class="detail-panel" id="detail-network">
+  <h2>🌐 네트워크 / 배포 구조</h2>
+  <div class="flow-diagram">┌─── Docker Compose ───────────────────────────┐
+│                                               │
+│  ┌─ planner ──────────┐  ┌─ tunnel ────────┐ │
+│  │ Node.js + Express   │  │ cloudflared     │ │
+│  │ Port 3000           │←─│ http2 프록시     │ │
+│  │ Volume: /data       │  │                 │ │
+│  └─────────────────────┘  └────────┬────────┘ │
+│                                    │          │
+└────────────────────────────────────│──────────┘
+                                     ↓
+                              Cloudflare 네트워크
+                                     ↓
+                                외부 사용자 (HTTPS)</div>
+  <h3>컨테이너 구성</h3>
+  <ul>
+    <li><b>planner</b>: Node 20 Alpine 기반, Express 서버 실행, DB를 Docker 볼륨에 저장</li>
+    <li><b>tunnel</b>: cloudflared 이미지, planner:3000으로 HTTP/2 프록시</li>
+    <li>Docker 볼륨 <code>planner-data</code>로 DB 영속성 보장</li>
+  </ul>
+  <h3>서버 바인딩 (v6.1)</h3>
+  <ul>
+    <li><b>Docker 환경</b> (<code>DB_DIR=/data</code>): <code>0.0.0.0</code>에 바인딩 — tunnel 컨테이너가 Docker 내부 네트워크(172.18.0.x)로 접근 가능</li>
+    <li><b>로컬 환경</b>: <code>127.0.0.1</code>에 바인딩 — 외부 접근 차단 (보안)</li>
+    <li><code>BIND_HOST</code> 환경변수로 직접 오버라이드 가능</li>
+    <li>Docker에서 <code>0.0.0.0</code>은 격리된 가상 네트워크 내부에서만 노출 → 보안 안전</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul>
+    <li><span class="file-ref">docker-compose.yml</span> — 서비스 정의</li>
+    <li><span class="file-ref">Dockerfile</span> — 이미지 빌드 (Node 20 Alpine + native 빌드 도구)</li>
+    <li><span class="file-ref">scripts/tunnel.bat</span> — 로컬용 Cloudflare Tunnel 실행 스크립트</li>
+  </ul>
+  <div class="tech-tags">
+    <span class="tech-tag">Docker</span>
+    <span class="tech-tag">Docker Compose</span>
+    <span class="tech-tag">cloudflared</span>
+    <span class="tech-tag">HTTP/2</span>
+  </div>
+</div>
+
+<!-- 미들웨어 -->
+<div class="detail-panel" id="detail-middleware">
+  <h2>🛡️ Express 미들웨어 체인</h2>
+  <p>모든 요청은 다음 미들웨어를 순서대로 통과합니다.</p>
+  <div class="flow-diagram">요청 수신
+  ↓
+Helmet ─────── HTTP 보안 헤더 자동 설정 (XSS, Clickjacking 방지)
+  ↓
+Morgan ─────── 요청 로깅 (combined 포맷, 디버깅용)
+  ↓
+Rate Limit ─── 전역: 100req/60초, 로그인: 10req/15분 (브루트포스 차단)
+  ↓
+Body Parser ── JSON + text/plain 파싱 (sendBeacon 지원)
+  ↓
+Session ────── express-session + SQLite 세션 스토어 (7일 유지, 15분 정리)
+  ↓
+라우트 핸들러</div>
+  <h3>각 미들웨어 역할</h3>
+  <ul>
+    <li><b>Helmet</b>: Content-Security-Policy, X-Frame-Options 등 보안 헤더 자동 추가</li>
+    <li><b>Morgan</b>: 모든 HTTP 요청을 로그에 기록 (IP, 메서드, 경로, 상태코드)</li>
+    <li><b>Rate Limit</b>: 짧은 시간에 과다 요청 차단 → DDoS/브루트포스 방지</li>
+    <li><b>Session</b>: 쿠키 기반 세션으로 로그인 상태 유지, sessions.db에 저장</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul>
+    <li><span class="file-ref">server.js</span> (1~54행) — 미들웨어 설정</li>
+  </ul>
+  <div class="tech-tags">
+    <span class="tech-tag">helmet</span>
+    <span class="tech-tag">morgan</span>
+    <span class="tech-tag">express-rate-limit</span>
+    <span class="tech-tag">express-session</span>
+    <span class="tech-tag">better-sqlite3-session-store</span>
+  </div>
+</div>
+
+<!-- 인증 -->
+<div class="detail-panel" id="detail-auth">
+  <h2>🔐 인증 흐름</h2>
+  <div class="flow-diagram">login.html (로그인 폼)
+  ↓ POST /api/auth/login (username, password)
+  ↓
+서버: findUser(username) → DB에서 유저 조회
+  ↓
+bcrypt.compare(password, hash) → 비밀번호 해시 비교
+  ↓ (일치)
+req.session.regenerate() → 새 세션 ID 발급 (세션 고정 공격 방지)
+  ↓
+req.session.userId = user.id → 세션에 유저 ID 저장
+  ↓
+응답: { username } → 브라우저가 / 로 리다이렉트
+  ↓
+이후 모든 요청: requireAuth() 미들웨어가 session.userId 검증
+  ↓ (없으면)
+401 응답 또는 login.html로 리다이렉트</div>
+  <h3>보안 포인트</h3>
+  <ul>
+    <li><b>bcrypt</b>: 비밀번호를 해시로 저장 → 원문 복구 불가, 레인보우 테이블 공격 무력화</li>
+    <li><b>session.regenerate()</b>: 로그인 성공 시 세션 ID 교체 → 세션 고정 공격 차단</li>
+    <li><b>httpOnly 쿠키</b>: JavaScript에서 세션 쿠키 접근 불가 → XSS로 세션 탈취 방지</li>
+    <li><b>로그인 Rate Limit</b>: 15분에 10회로 제한 → 무차별 대입 공격 차단</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul>
+    <li><span class="file-ref">server.js</span> (57~120행) — 인증 미들웨어 + 로그인 API</li>
+    <li><span class="file-ref">login.html</span> — 로그인 폼 UI</li>
+    <li><span class="file-ref">db.js</span> (38~42행) — findUser(), findUserById()</li>
+  </ul>
+  <div class="tech-tags">
+    <span class="tech-tag">bcrypt</span>
+    <span class="tech-tag">express-session</span>
+    <span class="tech-tag">httpOnly cookie</span>
+  </div>
+</div>
+
+<!-- API 라우트 -->
+<div class="detail-panel" id="detail-api">
+  <h2>📡 API 엔드포인트</h2>
+  <h3>인증 API</h3>
+  <table>
+    <tr><th>Method</th><th>Path</th><th>인증</th><th>설명</th></tr>
+    <tr><td>POST</td><td>/api/auth/login</td><td>X</td><td>로그인 (rate limited: 10req/15min)</td></tr>
+    <tr><td>POST</td><td>/api/auth/logout</td><td>O</td><td>로그아웃 (세션 삭제 + 쿠키 제거)</td></tr>
+    <tr><td>GET</td><td>/api/auth/me</td><td>O</td><td>현재 로그인한 유저 정보 반환</td></tr>
+  </table>
+  <h3>데이터 API</h3>
+  <table>
+    <tr><th>Method</th><th>Path</th><th>인증</th><th>설명</th></tr>
+    <tr><td>GET</td><td>/api/data</td><td>O</td><td>유저의 플래너 데이터 로드 (JSON blob)</td></tr>
+    <tr><td>PUT</td><td>/api/data</td><td>O</td><td>유저 데이터 저장 (일반 저장)</td></tr>
+    <tr><td>POST</td><td>/api/data</td><td>O</td><td>유저 데이터 저장 (sendBeacon용, text/plain 지원)</td></tr>
+  </table>
+  <h3>정적 파일</h3>
+  <table>
+    <tr><th>Path</th><th>인증</th><th>설명</th></tr>
+    <tr><td>/login.html, /login</td><td>X</td><td>로그인 페이지</td></tr>
+    <tr><td>/css/*, /js/*</td><td>X</td><td>CSS, JS 정적 파일</td></tr>
+    <tr><td>/, /index.html</td><td>O</td><td>메인 앱 페이지</td></tr>
+  </table>
+  <h3>데이터 저장 검증</h3>
+  <ul>
+    <li>요청 본문 1MB 제한 초과 시 거부</li>
+    <li>JSON 파싱 후 <code>sections</code> 배열 필수 검증</li>
+    <li>PUT(JSON) + POST(text/plain) 두 가지 Content-Type 지원</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul>
+    <li><span class="file-ref">server.js</span> (82~181행) — 전체 라우트 정의</li>
+  </ul>
+</div>
+
+<!-- SQLite DB -->
+<div class="detail-panel" id="detail-db">
+  <h2>🗄️ SQLite 데이터베이스</h2>
+  <h3>DB 파일</h3>
+  <ul>
+    <li><b>planner.db</b>: 유저 정보 + 플래너 데이터 (Docker: <code>/data/</code>, 로컬: <code>DB_DIR</code> 경로)</li>
+    <li><b>sessions.db</b>: 세션 데이터 (같은 디렉토리)</li>
+  </ul>
+  <h3>스키마</h3>
+  <div class="schema-box">
+<span class="tbl">users</span>
+├─ <span class="key">id</span> <span class="col">INTEGER PRIMARY KEY AUTOINCREMENT</span>
+├─ <span class="col">username</span> <span class="col">TEXT UNIQUE NOT NULL</span>
+├─ <span class="col">password_hash</span> <span class="col">TEXT NOT NULL</span>
+├─ <span class="col">is_admin</span> <span class="col">INTEGER DEFAULT 0</span>
+└─ <span class="col">created_at</span> <span class="col">DATETIME DEFAULT CURRENT_TIMESTAMP</span>
+
+<span class="tbl">user_data</span>
+├─ <span class="key">user_id</span> <span class="col">INTEGER PRIMARY KEY → users.id (FK)</span>
+├─ <span class="col">data</span> <span class="col">TEXT DEFAULT '{}' (JSON blob, 최대 1MB)</span>
+└─ <span class="col">updated_at</span> <span class="col">DATETIME DEFAULT CURRENT_TIMESTAMP</span>
+  </div>
+  <h3>JSON blob 구조 (user_data.data)</h3>
+  <div class="schema-box">
+{
+  <span class="key">sections</span>: [...]         <span class="col">// 체크리스트 섹션 (반복 일정)</span>
+  <span class="key">completions</span>: {}       <span class="col">// 날짜별 체크 완료 상태</span>
+  <span class="key">memos</span>: {}             <span class="col">// 날짜별 메모</span>
+  <span class="key">mealPlans</span>: {}         <span class="col">// 날짜별 식단 계획</span>
+  <span class="key">mealChecks</span>: {}        <span class="col">// 식단 체크 (레거시)</span>
+  <span class="key">mealTimes</span>: {}         <span class="col">// 끼니별 시간</span>
+  <span class="key">weights</span>: {}           <span class="col">// 날짜별 몸무게</span>
+  <span class="key">targetWeight</span>: number  <span class="col">// 목표 몸무게</span>
+  <span class="key">dailyRecords</span>: {}     <span class="col">// 일일 스냅샷 (tracker용)</span>
+}
+날짜 키 형식: "YYYY-M-D" (예: "2026-4-7")
+  </div>
+  <h3>특징</h3>
+  <ul>
+    <li><b>WAL 모드</b>: 읽기/쓰기 동시 가능 → 성능 향상</li>
+    <li><b>Foreign Key</b>: user_data.user_id → users.id 참조 무결성</li>
+    <li><b>Upsert 패턴</b>: INSERT ON CONFLICT UPDATE → 데이터 없으면 생성, 있으면 갱신</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul>
+    <li><span class="file-ref">db.js</span> — DB 초기화, 스키마, CRUD 함수</li>
+    <li><span class="file-ref">scripts/create-user.js</span> — CLI 유저 생성 도구</li>
+  </ul>
+  <div class="tech-tags">
+    <span class="tech-tag">better-sqlite3</span>
+    <span class="tech-tag">WAL mode</span>
+    <span class="tech-tag">JSON blob</span>
+  </div>
+</div>
+
+<!-- 데이터 동기화 -->
+<div class="detail-panel" id="detail-datasync">
+  <h2>🔄 데이터 동기화 흐름</h2>
+  <div class="flow-diagram">── 데이터 로드 (페이지 시작) ──
+GET /api/auth/me → 유저명 확인 (localStorage 키 분리용)
+GET /api/data   → 서버에서 JSON 로드
+  ↓ 실패 시
+localStorage.getItem('planner_v4_{username}') → 오프라인 캐시 폴백
+
+── 데이터 저장 (유저 조작 시) ──
+data 객체 수정
+  ↓ saveData() 호출
+  ├─ localStorage.setItem() ──── 즉시 (오프라인 캐시)
+  └─ fetch PUT /api/data ─────── 300ms 디바운스 (서버 저장)
+       ↓ 실패 시
+       화면에 경고 표시
+
+── 페이지 닫기 ──
+navigator.sendBeacon(POST /api/data) → 마지막 데이터 전송 (비동기, 차단 없음)
+
+── 전체 흐름 요약 ──
+loadData() → 메모리(data 객체) → saveData() → localStorage(즉시) + debounce(300ms) → 서버
+                                                                    ↘ 페이지 닫기: sendBeacon</div>
+  <h3>핵심 개념</h3>
+  <ul>
+    <li><b>서버가 원본 (Source of Truth)</b>: 페이지 로드 시 항상 서버 데이터 우선</li>
+    <li><b>localStorage는 캐시</b>: 서버 장애 시에만 사용하는 오프라인 폴백</li>
+    <li><b>300ms 디바운스</b>: 빈번한 조작 시 서버 요청을 묶어서 전송 (성능 최적화)</li>
+    <li><b>sendBeacon</b>: 탭/브라우저 닫아도 데이터 손실 없이 마지막 저장 보장</li>
+    <li><b>충돌 해결</b>: Last Write Wins (마지막 저장이 이김, 머지 로직 없음)</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul>
+    <li><span class="file-ref">js/data.js</span> (77~162행) — loadData(), saveData()</li>
+  </ul>
+  <div class="tech-tags">
+    <span class="tech-tag">Fetch API</span>
+    <span class="tech-tag">localStorage</span>
+    <span class="tech-tag">navigator.sendBeacon</span>
+    <span class="tech-tag">debounce</span>
+  </div>
+</div>
+
+<!-- data.js -->
+<div class="detail-panel" id="detail-datajs">
+  <h2>💾 data.js — 전역 상태 관리</h2>
+  <p>프론트엔드의 핵심. 전역 <code>data</code> 객체를 관리하고 모든 CRUD 함수를 제공합니다.</p>
+  <h3>주요 기능</h3>
+  <table>
+    <tr><th>카테고리</th><th>함수</th><th>설명</th></tr>
+    <tr><td>로드/저장</td><td>loadData(), saveData()</td><td>서버/localStorage 데이터 동기화</td></tr>
+    <tr><td>섹션 관리</td><td>addSection(), updateSection(), removeSection()</td><td>체크리스트 섹션 CRUD</td></tr>
+    <tr><td>반복 판정</td><td>isSectionOnDate(section, dateKey)</td><td>daily, weekdays, weekly, biweekly, monthly 등 반복 스케줄 계산</td></tr>
+    <tr><td>체크 상태</td><td>toggleComplete(), getCompletionStats()</td><td>항목 완료 토글 + 진행률 계산</td></tr>
+    <tr><td>식단</td><td>getMealPlan(), addMealItem(), toggleMealCheck()</td><td>끼니별 식단 관리</td></tr>
+    <tr><td>몸무게</td><td>saveWeight(), getTargetWeight()</td><td>일별 몸무게 + 목표 관리</td></tr>
+    <tr><td>스냅샷</td><td>saveDailySnapshot()</td><td>당일 체크리스트 상태를 dailyRecords에 저장</td></tr>
+    <tr><td>가져오기/내보내기</td><td>exportToJSON(), importFromJSON()</td><td>데이터 백업/복원</td></tr>
+    <tr><td>보안</td><td>escapeHtml()</td><td>XSS 방지용 HTML 이스케이프</td></tr>
+  </table>
+  <h3>반복 타입</h3>
+  <ul>
+    <li><code>daily</code> 매일 | <code>weekdays</code> 평일 | <code>weekends</code> 주말</li>
+    <li><code>weekly</code> 매주 특정 요일 | <code>biweekly</code> 격주 특정 요일</li>
+    <li><code>everyOtherDay</code> 격일 | <code>monthly</code> 매월 특정 일</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul><li><span class="file-ref">js/data.js</span> — 전체 파일 (약 600행)</li></ul>
+</div>
+
+<!-- JS 모듈 -->
+<div class="detail-panel" id="detail-modules">
+  <h2>📦 프론트엔드 JS 모듈</h2>
+  <div class="flow-diagram">로드 순서 (index.html에서 순서대로 &lt;script&gt; 로드):
+
+1. data.js ───── 전역 data 객체 + 모든 CRUD 함수 정의
+       ↓ (전역 스코프 공유)
+2. checklist.js ── 체크리스트 탭 UI (data.js 함수 사용)
+3. calendar.js ─── 캘린더 탭 UI (data.js + checklist.js 함수 사용)
+4. tracker.js ──── 일일 기록 탭 UI (data.js + checklist.js 함수 사용)
+       ↓
+5. 인라인 스크립트 ── loadData() → init 함수들 호출</div>
+  <h3>각 모듈 역할</h3>
+  <table>
+    <tr><th>모듈</th><th>탭</th><th>핵심 기능</th></tr>
+    <tr><td><span class="file-ref">checklist.js</span></td><td>체크리스트</td><td>일일 루틴 체크, 미니 캘린더, 진행률 바, 날짜 이동</td></tr>
+    <tr><td><span class="file-ref">calendar.js</span></td><td>캘린더</td><td>월간 그리드, 섹션 아코디언, 식단 관리(드래그 정렬), 몸무게 입력, 메모, 모달(항목/섹션 추가·편집)</td></tr>
+    <tr><td><span class="file-ref">tracker.js</span></td><td>일일 기록</td><td>계획 vs 실행 비교 테이블, 루틴 달성률, 식단 달성률, 설정(테마/데이터 관리/로그아웃)</td></tr>
+  </table>
+  <h3>특징</h3>
+  <ul>
+    <li>ES Module이 아닌 <b>전역 스코프</b>에 함수 정의 → 로드 순서 중요</li>
+    <li>모든 UI 업데이트는 <code>render*</code> 함수로 DOM 직접 조작</li>
+    <li>모듈 간 연동: <code>syncCalendar()</code>로 체크리스트 변경 → 캘린더 반영</li>
+    <li>드래그 시스템: Pointer Event 기반 (마우스 + 터치 통합)</li>
+  </ul>
+  <div class="tech-tags">
+    <span class="tech-tag">Vanilla JavaScript</span>
+    <span class="tech-tag">ES6+</span>
+    <span class="tech-tag">Pointer Events</span>
+    <span class="tech-tag">DOM API</span>
+  </div>
+</div>
+
+<!-- 브라우저 UI -->
+<div class="detail-panel" id="detail-ui">
+  <h2>🖥️ 브라우저 UI 구조</h2>
+  <div class="flow-diagram">index.html
+├─ 네비게이션 바 (3개 탭 전환)
+│   ├─ 체크리스트 (#page-checklist)
+│   ├─ 캘린더    (#page-calendar)
+│   └─ 일일 기록  (#page-tracker)
+│
+├─ 모달 (오버레이)
+│   ├─ 항목 추가/편집 모달
+│   ├─ 섹션 추가/편집 모달
+│   └─ 범위 선택 모달 ("전체" vs "오늘부터")
+│
+└─ 초기화 스크립트
+    ├─ 테마 복원 (localStorage → data-theme)
+    ├─ loadData() → 서버 데이터 로드
+    ├─ initChecklist(), initCalendar(), initTracker()
+    └─ beforeunload → sendBeacon()</div>
+  <h3>테마 시스템</h3>
+  <ul>
+    <li>CSS 변수 기반: <code>--bg</code>, <code>--text</code>, <code>--card-bg</code> 등</li>
+    <li><code>:root</code> = 다크 테마 (기본), <code>[data-theme="light"]</code> = 라이트 테마</li>
+    <li>테마 설정은 <code>localStorage('planner_theme')</code>에 기기별 저장 (서버에 안 감)</li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul>
+    <li><span class="file-ref">index.html</span> — 메인 페이지 구조 + 초기화 스크립트</li>
+    <li><span class="file-ref">login.html</span> — 로그인 폼</li>
+    <li><span class="file-ref">css/styles.css</span> — 전체 스타일 (다크/라이트 테마 CSS 변수)</li>
+  </ul>
+  <div class="tech-tags">
+    <span class="tech-tag">HTML5</span>
+    <span class="tech-tag">CSS3 Variables</span>
+    <span class="tech-tag">Google Fonts</span>
+  </div>
+</div>
+
+<!-- 백업 -->
+<div class="detail-panel" id="detail-backup">
+  <h2>💿 자동 백업 시스템</h2>
+  <div class="flow-diagram">서버 시작
+  ↓ 즉시 첫 백업 실행
+  ↓
+planner.db → db.backup() → backups/planner_2026-04-07_16-57.db
+  ↓
+6시간 대기 (setInterval)
+  ↓
+반복 백업...
+  ↓
+파일 수가 7개 초과 시 → 가장 오래된 백업 자동 삭제</div>
+  <h3>설정</h3>
+  <ul>
+    <li><b>주기</b>: 6시간 (서버 시작 시 즉시 1회 + 이후 반복)</li>
+    <li><b>보존</b>: 최근 7개 파일 유지, 초과분 자동 삭제</li>
+    <li><b>경로</b>: Docker → <code>/backups/</code>, 로컬 → <code>BACKUP_DIR</code> 환경변수</li>
+    <li><b>방식</b>: SQLite 내장 <code>db.backup()</code> — 서비스 중단 없는 온라인 백업</li>
+    <li><b>파일명</b>: <code>planner_YYYY-MM-DD_HH-mm.db</code></li>
+  </ul>
+  <h3>관련 파일</h3>
+  <ul><li><span class="file-ref">backup.js</span> — 백업 로직 전체 (약 60행)</li></ul>
+  <div class="tech-tags">
+    <span class="tech-tag">better-sqlite3 backup API</span>
+    <span class="tech-tag">setInterval</span>
+  </div>
+</div>
+
+<!-- ══════ 모듈 의존성 섹션 ══════ -->
+<div class="section-header">🔗 모듈 의존성 구조</div>
+
+<div class="detail-panel" id="detail-deps" style="max-height:none; padding:24px; border-color:#0f3460; margin-bottom:16px;">
+  <h2>🔗 JS 모듈 의존성 다이어그램</h2>
+  <p>모든 모듈은 전역 스코프에서 함수를 정의하며, 로드 순서가 의존성을 결정합니다.</p>
+
+  <div class="dep-graph">
+    <div class="dep-layer">
+      <div class="dep-box">calendar.js</div>
+      <div class="dep-box">tracker.js</div>
+    </div>
+    <div class="dep-arrow-down">↓ uses ↓</div>
+    <div class="dep-layer">
+      <div class="dep-box">checklist.js</div>
+    </div>
+    <div class="dep-arrow-down">↓ uses ↓</div>
+    <div class="dep-layer">
+      <div class="dep-box base">data.js (기반 레이어, 60+ 함수)</div>
+    </div>
+  </div>
+
+  <h3>의존성 상세</h3>
+  <table>
+    <tr><th>모듈</th><th>함수 수</th><th>의존 대상</th><th>역할</th></tr>
+    <tr><td><span class="file-ref">data.js</span></td><td>60+</td><td>없음 (기반 레이어)</td><td>전역 data 객체, 모든 CRUD, 서버 동기화, escapeHtml</td></tr>
+    <tr><td><span class="file-ref">checklist.js</span></td><td>-</td><td>data.js</td><td>체크리스트 탭 UI, 미니 캘린더, 진행률</td></tr>
+    <tr><td><span class="file-ref">calendar.js</span></td><td>-</td><td>data.js, checklist.js</td><td>월간 캘린더, 섹션/식단/메모/몸무게 관리</td></tr>
+    <tr><td><span class="file-ref">tracker.js</span></td><td>-</td><td>data.js, checklist.js</td><td>일일 기록, 계획 vs 실행 비교, 설정</td></tr>
+  </table>
+
+  <h3>로드 순서가 중요한 이유</h3>
+  <ul>
+    <li>ES Module이 아닌 <b>전역 스코프</b> 방식 — <code>&lt;script&gt;</code> 순서가 곧 의존성 해결 순서</li>
+    <li><code>data.js</code>가 먼저 로드되어야 다른 모듈이 <code>data</code> 객체와 CRUD 함수에 접근 가능</li>
+    <li><code>checklist.js</code>가 <code>calendar.js</code>/<code>tracker.js</code>보다 먼저 로드되어야 <code>syncCalendar()</code> 등 함수 사용 가능</li>
+    <li>순서: <code>data.js</code> → <code>checklist.js</code> → <code>calendar.js</code> → <code>tracker.js</code></li>
+  </ul>
+</div>
+
+<!-- ══════ 문서 맵 섹션 ══════ -->
+<div class="section-header">📚 문서 맵 (docs/)</div>
+
+<div class="detail-panel" id="detail-docs" style="max-height:none; padding:24px; border-color:#0f3460; margin-bottom:16px;">
+  <h2>📚 프로젝트 문서 구조</h2>
+  <p>프로젝트 문서는 <code>docs/</code> 폴더와 루트에 분리되어 있습니다.</p>
+
+  <h3>docs/ 폴더 내 문서</h3>
+  <div class="doc-grid">
+    <div class="doc-card">
+      <div class="doc-name">api-reference.md</div>
+      <div class="doc-desc">REST API 엔드포인트 상세 명세 (요청/응답 형식, 인증, 에러 코드)</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">data-schema.md</div>
+      <div class="doc-desc">JSON blob 데이터 스키마 정의 (sections, memos, mealPlans 등 전체 필드)</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">module-guide.md</div>
+      <div class="doc-desc">프론트엔드 JS 모듈별 함수 목록 및 사용법 가이드</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">design-system.md</div>
+      <div class="doc-desc">CSS 변수, 테마 시스템, UI 컴포넌트 스타일 가이드</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">deployment.md</div>
+      <div class="doc-desc">Docker/로컬 배포 방법, 환경변수 설정, Cloudflare Tunnel 구성</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">architecture.html</div>
+      <div class="doc-desc">이 파일 — 인터랙티브 시스템 아키텍처 다이어그램</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">DEV_LOG.md</div>
+      <div class="doc-desc">개발 로그 및 변경 이력, 진행 상황 기록</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">PROJECT_REPORT.md</div>
+      <div class="doc-desc">프로젝트 상세 보고서 및 기술 문서</div>
+    </div>
+  </div>
+
+  <h3>docs/plans/ 폴더</h3>
+  <div class="doc-grid">
+    <div class="doc-card">
+      <div class="doc-name">plans/folder-restructure.md</div>
+      <div class="doc-desc">프로젝트 폴더 구조 리팩토링 계획</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">plans/calendar-js-split.md</div>
+      <div class="doc-desc">calendar.js 모듈 분리 계획</div>
+    </div>
+  </div>
+
+  <h3>루트 문서</h3>
+  <div class="doc-grid">
+    <div class="doc-card">
+      <div class="doc-name">CLAUDE.md (루트)</div>
+      <div class="doc-desc">프로젝트 컨텍스트 — 파일 구조, 기술 스택, 핵심 규칙, 실행 방법</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">README.md (루트)</div>
+      <div class="doc-desc">프로젝트 소개 및 빠른 시작 가이드</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-name">memo.txt (루트)</div>
+      <div class="doc-desc">향후 기능 아이디어 및 메모</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleDetail(node) {
+  const targetId = node.dataset.target;
+  const panel = document.getElementById(targetId);
+  const wasOpen = panel.classList.contains('open');
+
+  // 모든 패널 닫기
+  document.querySelectorAll('.detail-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.pipe-node').forEach(n => n.classList.remove('active'));
+
+  // 클릭한 것이 열려있었으면 닫기만, 아니면 열기
+  if (!wasOpen) {
+    panel.classList.add('open');
+    node.classList.add('active');
+    // 패널 위치로 스크롤
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
+}
+</script>
+
+</body>
+</html>
