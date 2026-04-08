@@ -12,6 +12,14 @@
   --text3: #5a5a7a;
   --danger: #FF6B6B;
   --success: #4ECDC4;
+  --accent-bg: rgba(124,92,252,0.05);
+  --accent-bg-hover: rgba(124,92,252,0.15);
+  --accent-border: rgba(124,92,252,0.25);
+  --accent-bg-subtle: rgba(124,92,252,0.04);
+  --accent-bg-medium: rgba(124,92,252,0.1);
+  --accent3-border: rgba(255,159,67,0.25);
+  --accent3-bg-medium: rgba(255,159,67,0.1);
+  --accent3-bg-subtle: rgba(255,159,67,0.04);
 }
 
 /* Light Theme */
@@ -29,9 +37,14 @@
   --text3: #9090a8;
   --danger: #E55555;
   --success: #3BBDB4;
-  --hover-bg: rgba(0,0,0,0.03);
-  --hover-bg-light: rgba(0,0,0,0.02);
-  --shadow-color: rgba(0,0,0,0.08);
+  --accent-bg: rgba(107,76,230,0.05);
+  --accent-bg-hover: rgba(107,76,230,0.15);
+  --accent-border: rgba(107,76,230,0.25);
+  --accent-bg-subtle: rgba(107,76,230,0.04);
+  --accent-bg-medium: rgba(107,76,230,0.1);
+  --accent3-border: rgba(232,138,48,0.25);
+  --accent3-bg-medium: rgba(232,138,48,0.1);
+  --accent3-bg-subtle: rgba(232,138,48,0.04);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -77,7 +90,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 /* ADD SECTION BUTTON */
 .add-section-row { text-align: center; margin: 16px 0 8px; }
 .add-section-btn { padding: 10px 20px; border-radius: 10px; border: 1px dashed var(--border); background: none; color: var(--text3); font-size: 15px; cursor: pointer; font-family: inherit; transition: all 0.2s; width: 100%; }
-.add-section-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,92,252,0.05); }
+.add-section-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
 /* DATE RANGE */
 .date-range-row { display: flex; gap: 10px; margin-bottom: 10px; }
@@ -115,7 +128,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 /* ITEM */
 .item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border-radius: 12px; margin-bottom: 6px; border: 1px solid var(--border); transition: all 0.2s; }
-.item:hover { border-color: rgba(124,92,252,0.25); }
+.item:hover { border-color: var(--accent-border); }
 .item.done { opacity: 0.5; }
 .check { width: 22px; height: 22px; min-width: 22px; border-radius: 50%; border: 1.5px solid var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; background: none; }
 .check.checked { background: var(--accent); border-color: var(--accent); }
@@ -153,7 +166,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .cal-day.has-memo::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
 .cal-day.has-meal::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent3); position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
 .cal-day.has-memo.has-meal::after { content: ''; width: 12px; height: 5px; border-radius: 3px; background: linear-gradient(90deg, var(--accent2), var(--accent3)); position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
-.cal-day.selected { background: rgba(124,92,252,0.15); border-color: var(--accent); }
+.cal-day.selected { background: var(--accent-bg-hover); border-color: var(--accent); }
 .cal-day.empty { cursor: default; }
 .cal-day.other-month { color: var(--text3); opacity: 0.4; }
 
@@ -202,9 +215,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .checklist-memo-input::placeholder { color: var(--text3); }
 .checklist-memo-input:focus { outline: none; border-color: var(--accent); }
 
-/* RESET NOTICE */
-.reset-notice { background: rgba(78,205,196,0.08); border: 1px solid rgba(78,205,196,0.2); border-radius: 10px; padding: 8px 14px; font-size: 11px; color: var(--accent2); margin-bottom: 16px; text-align: center; }
-
 /* TRACKER PAGE */
 .tracker-date-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 0; }
 .tracker-date-label { font-size: 20px; font-weight: 700; }
@@ -244,18 +254,18 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .status-miss { color: var(--danger); }
 
 /* TRACKER - 식단 테이블 구분 색상 */
-.tracker-table.tracker-meal { border-color: rgba(255,159,67,0.25); }
-.tracker-table.tracker-meal th { background: rgba(255,159,67,0.1); color: var(--accent3); }
-.tracker-table.tracker-meal td { border-top-color: rgba(255,159,67,0.1); }
-.tracker-table.tracker-meal tr:hover td { background: rgba(255,159,67,0.04); }
+.tracker-table.tracker-meal { border-color: var(--accent3-border); }
+.tracker-table.tracker-meal th { background: var(--accent3-bg-medium); color: var(--accent3); }
+.tracker-table.tracker-meal td { border-top-color: var(--accent3-bg-medium); }
+.tracker-table.tracker-meal tr:hover td { background: var(--accent3-bg-subtle); }
 .tracker-table.tracker-meal .tracker-check.checked { background: var(--accent3); border-color: var(--accent3); }
 .tracker-section-title.meal-title { color: var(--accent3); }
 
 /* TRACKER - 반복 체크리스트 테이블 구분 */
-.tracker-table.tracker-recurring { border-color: rgba(124,92,252,0.25); }
-.tracker-table.tracker-recurring th { background: rgba(124,92,252,0.1); color: var(--accent); }
-.tracker-table.tracker-recurring td { border-top-color: rgba(124,92,252,0.1); }
-.tracker-table.tracker-recurring tr:hover td { background: rgba(124,92,252,0.04); }
+.tracker-table.tracker-recurring { border-color: var(--accent-border); }
+.tracker-table.tracker-recurring th { background: var(--accent-bg-medium); color: var(--accent); }
+.tracker-table.tracker-recurring td { border-top-color: var(--accent-bg-medium); }
+.tracker-table.tracker-recurring tr:hover td { background: var(--accent-bg-subtle); }
 
 /* RECURRING TASKS in CALENDAR */
 .recurring-panel { margin-top: 12px; background: var(--card); border-radius: 14px; padding: 16px; border: 1px solid var(--border); }
@@ -321,18 +331,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .item-added-date { font-size: 11px; color: var(--text3); background: var(--bg2); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
 .acc-inline-add { display: flex; gap: 6px; margin-top: 6px; }
 
-/* CHECKLIST MEAL DISPLAY */
-.checklist-meal-section { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
-.checklist-meal-list { background: var(--card); border-radius: 12px; padding: 10px 14px; border: 1px solid var(--border); }
-.checklist-meal-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
-.checklist-meal-row:not(:last-child) { border-bottom: 1px solid var(--border); }
-.checklist-meal-type { font-size: 12px; font-weight: 600; color: var(--accent3); min-width: 60px; }
-.checklist-meal-foods { color: var(--text); flex: 1; }
-
 /* SCOPE MODAL */
 .scope-btns { display: flex; flex-direction: column; gap: 8px; }
 .scope-btn { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-family: inherit; text-align: left; transition: all 0.2s; }
-.scope-btn:hover { border-color: var(--accent); background: rgba(124,92,252,0.05); }
+.scope-btn:hover { border-color: var(--accent); background: var(--accent-bg); }
 .scope-btn-title { font-size: 14px; font-weight: 700; }
 .scope-btn-desc { font-size: 11px; color: var(--text3); }
 .scope-btn.cancel { align-items: center; background: none; border-color: transparent; color: var(--text3); font-size: 13px; padding: 8px; }
@@ -384,3 +386,44 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+/* UTILITY */
+.flex-center { display: flex; align-items: center; }
+.flex-center-gap { display: flex; align-items: center; gap: 8px; }
+
+/* LOGIN PAGE */
+.login-wrap {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 20px;
+}
+.login-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 40px 32px; width: 100%; max-width: 380px;
+  text-align: center;
+}
+.login-title {
+  font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text);
+}
+.login-subtitle {
+  font-size: 14px; color: var(--text2); margin-bottom: 32px;
+}
+.login-input {
+  width: 100%; padding: 12px 16px; margin-bottom: 12px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); font-size: 15px; font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.login-input:focus { border-color: var(--accent); }
+.login-input::placeholder { color: var(--text3); }
+.login-btn {
+  width: 100%; padding: 13px; margin-top: 8px;
+  background: var(--accent); color: #fff; border: none; border-radius: 10px;
+  font-size: 16px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: opacity 0.2s;
+}
+.login-btn:hover { opacity: 0.85; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error {
+  color: var(--danger); font-size: 13px; margin-top: 12px;
+  min-height: 20px;
+}
