@@ -2,7 +2,7 @@
 
 ## Quick Context (새 세션 필독)
 - **한국어 UI** — 모든 텍스트/라벨이 한국어, 날짜 형식: `YYYY년 M월 D일 (요일)`
-- **전역 스코프 JS** — ES 모듈 아님. 모든 함수가 전역. 로드 순서 중요: `data.js` → `checklist.js` → `calendar.js` → `tracker.js`
+- **전역 스코프 JS** — ES 모듈 아님. 모든 함수가 전역. 로드 순서 중요: `data.js` → `checklist.js` → `section.js` → `meal.js` → `calendar.js` → `tracker.js`
 - **날짜 키 형식** — `YYYY-M-D` (zero-padding 없음, 예: `2026-4-3`)
 - **data.js가 핵심** — 60+ 전역 함수를 제공하는 데이터 레이어. 다른 모든 모듈이 의존
 - **유저 입력 → innerHTML 시 반드시 `escapeHtml()` 사용** (XSS 방지)
@@ -46,9 +46,11 @@ daily_planner/
 ├── css/
 │   └── styles.css      # 전체 스타일 (다크/라이트 테마 CSS 변수)
 ├── js/
-│   ├── data.js         # 데이터 관리 (서버 API 연동, 로컬 캐시)
+│   ├── data.js         # 데이터 관리 (서버 API 연동, 로컬 캐시, 공유 상수/유틸)
 │   ├── checklist.js    # 체크리스트 탭 (미니 캘린더, 진행률)
-│   ├── calendar.js     # 캘린더 탭 (월간 뷰, 섹션/식단/몸무게 관리)
+│   ├── section.js      # 섹션/항목 관리 (CRUD, 모달, 드래그앤드롭)
+│   ├── meal.js         # 식단 계획 UI (CRUD, 드래그앤드롭)
+│   ├── calendar.js     # 캘린더 탭 (월간 뷰, 몸무게, 메모, 할 일)
 │   └── tracker.js      # 일일 기록 탭 (계획 vs 실행 비교)
 ├── docs/               # 문서
 │   ├── architecture.html  # 아키텍처 시각화
@@ -102,9 +104,12 @@ user_data (user_id FK, data TEXT, updated_at)
 `user_data.data`에 유저별 JSON blob 저장 (프론트엔드 데이터 스키마 그대로).
 
 ## JS 모듈 로드 순서
-`data.js` → `checklist.js` → `calendar.js` → `tracker.js`
+`data.js` → `checklist.js` → `section.js` → `meal.js` → `calendar.js` → `tracker.js`
 
 모든 파일은 전역 스코프에서 함수를 정의하며, 순서가 중요함.
+- `section.js`는 `SECTION_COLORS`, `MEAL_TYPES` (data.js) 사용
+- `meal.js`는 `handleDragMove()` (section.js), `renderChecklist()` (checklist.js) 사용
+- `calendar.js`는 `renderAllSections()` (section.js), `renderMealPlan()` (meal.js) 사용
 
 ## 데이터 흐름
 1. 페이지 로드 → `loadData()` (async, fetch GET `/api/data`)
