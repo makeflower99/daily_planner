@@ -72,12 +72,6 @@ function todayKey() {
   return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
 }
 
-function tomorrowKey() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
-}
-
 function parseDateKey(dateKey) {
   const p = dateKey.split('-').map(Number);
   return new Date(p[0], p[1] - 1, p[2]);
@@ -294,18 +288,6 @@ function toggleComplete(dateKey, itemId) {
   if (!data.completions[dateKey]) data.completions[dateKey] = {};
   data.completions[dateKey][itemId] = !data.completions[dateKey][itemId];
   saveData();
-}
-
-function getCompletionStats(dateKey) {
-  const sections = getSectionsForDate(dateKey);
-  let total = 0, done = 0;
-  sections.forEach(sec => {
-    getItemsForDate(sec, dateKey).forEach(item => {
-      total++;
-      if (isCompleted(dateKey, item.id)) done++;
-    });
-  });
-  return { total, done, pct: total > 0 ? Math.round(done / total * 100) : 0 };
 }
 
 // === 섹션 관리 ===

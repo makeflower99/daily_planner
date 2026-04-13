@@ -218,7 +218,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 /* TRACKER PAGE */
 .tracker-date-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 0; }
 .tracker-date-label { font-size: 20px; font-weight: 700; }
-.tracker-nav-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 14px; }
 .tracker-section-title { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; color: var(--text3); margin-bottom: 8px; margin-top: 16px; text-transform: uppercase; }
 .tracker-memo-display { background: var(--card); border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); color: var(--text); font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin-bottom: 16px; }
 
@@ -232,7 +231,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .evo-section-name { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
 .evo-chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .evo-chart-label { font-size: 12px; color: var(--text3); }
-.evo-chart-toggle { background: var(--card2); border: 1px solid var(--border); color: var(--text2); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.evo-chart-toggle { background: var(--card); border: 1px solid var(--border); color: var(--text2); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
 .evo-chart-toggle:hover { background: var(--border); }
 .evo-chart-container { width: 100%; margin: 8px 0; }
 .evo-chart { width: 100%; height: auto; display: block; }
@@ -386,10 +385,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
-
-/* UTILITY */
-.flex-center { display: flex; align-items: center; }
-.flex-center-gap { display: flex; align-items: center; gap: 8px; }
 
 /* LOGIN PAGE */
 .login-wrap {

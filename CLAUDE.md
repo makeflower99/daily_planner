@@ -21,7 +21,7 @@
 | 개발 로그 | `docs/DEV_LOG.md` | 버전 히스토리 (v1.0 ~ v6.2) |
 | 프로젝트 리포트 | `docs/PROJECT_REPORT.md` | 상세 UI 스펙 (역사적 참조) |
 | 기능 아이디어 | `docs/memo.txt` | 향후 기능 아이디어 목록 |
-| 작업 계획 | `docs/plans/` | 진행 중/예정 작업 계획서 |
+| 완료 계획 | `docs/completed-plans/` | 완료된 작업 계획서 아카이브 |
 
 ## 개요
 바닐라 JavaScript 프론트엔드 + Node.js(Express) + SQLite 백엔드 기반의 멀티유저 데일리 플래너 웹 앱.
@@ -214,7 +214,7 @@ scripts\tunnel.bat
 - **v6.6 신규** — 섹션 수정 시 scope 모달 제거(바로 적용), 항목 시작/종료일 직접 수정 가능, 습관 변화 차트 분리(항목 수 꺾은선/달성률 막대 전환), 일일 기록 탭 할 일 표시, 미사용 Future 함수 정리, getCompletionStats/getSectionStatsForDateRange 버그 수정
 - **v6.5** — 매일 할 일(To-Do) 기능, 항목별 시작/종료일 관리, 캘린더 탭 섹션 형태 루틴 표시, 삭제 모달 개선
 - **v6.4** — 습관 변화 차트 시각화 (SVG 차트, 룰 기반 피드백, 기간 선택), 메모를 체크리스트 탭으로 이동
-- **폴더 구조 정리 완료** — `docs/`, `scripts/` 분리 (`docs/plans/folder-restructure.md` 참조)
+- **폴더 구조 정리 완료** — `docs/`, `scripts/` 분리 (`docs/completed-plans/folder-restructure.md` 참조)
 - **문서화 완료** — API 레퍼런스, 데이터 스키마, 모듈 가이드, 디자인 시스템, 배포 가이드, 아키텍처 문서 작성
 
 ### 알려진 이슈
@@ -224,7 +224,6 @@ scripts\tunnel.bat
 - `mealChecks` 필드는 레거시 — 실제로는 `dailyRecords.meals` 사용
 
 ## 향후 작업 계획
-- [ ] **calendar.js 분리** — calendar.js(1,051줄)을 calendar.js + meal.js + section.js로 분리 → `docs/plans/calendar-js-split.md`
 - [ ] **습관 변화 추적 고도화** — 항목 삭제 이력 추적(deletedDate), 이름 변경 로그(changeLog), 메모 인라인 편집
 - [ ] **AI 피드백** — LLM 연동, 듀오링고 스타일 격려 멘트 (이도 올려요! 스트레칭 중요! 야채 같이 먹어요!)
 - [ ] **지출 관리** — 가계부 기능 추가
